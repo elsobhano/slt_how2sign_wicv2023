@@ -105,6 +105,11 @@ class Sign2TextTransformerConfig(FairseqDataclass):
     max_source_positions: int = II("task.max_source_positions")
     max_target_positions: int = II("task.max_target_positions")
     feats_type: ChoiceEnum([x.name for x in SignFeatsType]) = II("task.feats_type")
+    feat_dim: int = field(
+        default=0, metadata={"help": "input feature dimension; 0 = use the feats_type "
+                                     "default (i3d=1024, mediapipe=195). Set to 256 for "
+                                     "AGCN SignRep-style pose features."}
+    )
 
 
 @register_model("sign2text_transformer", dataclass=Sign2TextTransformerConfig)
@@ -154,7 +159,11 @@ class Sign2TextTransformerModel(FairseqEncoderDecoderModel):
             feat_dim = 1024
         elif cfg.feats_type == SignFeatsType.mediapipe:
             feat_dim = 195
-        
+        # Allow overriding the input feature dim from config (e.g. 256-d AGCN
+        # SignRep features instead of 1024-d I3D).
+        if getattr(cfg, "feat_dim", 0):
+            feat_dim = cfg.feat_dim
+
         def build_embedding(dictionary, embed_dim):
             num_embeddings = len(dictionary)
             padding_idx = dictionary.pad()
