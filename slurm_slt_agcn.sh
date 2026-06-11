@@ -2,18 +2,21 @@
 
 #SBATCH --job-name="slt256"
 #SBATCH --partition=cogvis-project
-#SBATCH --exclude=aisurrey27,aisurrey28,aisurrey29
+#SBATCH --nodelist=aisurrey27,aisurrey28,aisurrey29
 #SBATCH --gpus=1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=12
 #SBATCH --mem=64G
-#SBATCH --time=2-00:00:00
+#SBATCH --time=0-02:00:00
 #SBATCH -o slurm_logs/slurm.%N.%j.out
 
-# --- paths on the cluster filesystem (edit these) ---------------------------
-IMAGE=docker://container-registry.surrey.ac.uk/shared-containers/slt-how2sign
-REPO=$HOME/slt_how2sign_wicv2023                 # the fairseq fork repo
+# --- paths --------------------------------------------------------------------
+IMAGE=docker://container-registry.surrey.ac.uk/shared-containers/slt-how-2-sign
+# REPO is auto-detected as the dir you `sbatch` from (no hardcoded path). It is
+# kept ABSOLUTE on purpose: Hydra chdir's into its output dir mid-run, so the
+# paths passed to fairseq below must be absolute or training breaks.
+REPO="$PWD"                                      # the fairseq fork repo (= current dir)
 DATA=$REPO/data/how2sign                         # where agcn_features* + vocab live
 
 # --- experiment (swap these to run a different variant) ---------------------
@@ -27,7 +30,8 @@ FEATURES=agcn_features                            # use agcn_features_proj128 fo
 
 export WANDB_API_KEY=1af8cc2a4ed95f2ba66c31d193caf3dd61c3a41f
 
-CONFIG_DIR=$REPO/examples/sign_language/config/wicv_cvpr23/i3d_best
+# Relative is fine here — Hydra resolves --config-dir from the cwd at launch.
+CONFIG_DIR=examples/sign_language/config/wicv_cvpr23/i3d_best
 OUTPUT_FILE="outputs/slt_${RUN_NAME}.out"
 mkdir -p outputs slurm_logs
 
@@ -38,11 +42,7 @@ echo "Config: $CONFIG  Run: $RUN_NAME" >> "$OUTPUT_FILE"
 echo "Start Time: $(date)"           >> "$OUTPUT_FILE"
 echo "========================================" >> "$OUTPUT_FILE"
 
-apptainer exec --nv \
-    --bind "$REPO":"$REPO" \
-    --bind "$DATA":"$DATA" \
-    "$IMAGE" bash -lc "
-        cd '$REPO' &&
+apptainer exec "$IMAGE" bash -lc "
         python setup.py build_ext --inplace &&
         PYTHONPATH='$REPO' \
         SAVE_DIR='$DATA' \
