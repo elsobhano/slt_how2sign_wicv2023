@@ -1,3 +1,4 @@
+import os
 import sys
 import logging
 from enum import Enum
@@ -84,10 +85,16 @@ class SignFeatsDataset(FairseqDataset):
         feats_files = []
         offsets = []
         sizes = []
+        # Resolve relative signs_file paths against the manifest's directory so
+        # the same TSV is portable across machines (local <-> cluster).
+        manifest_dir = os.path.dirname(os.path.abspath(str(manifest_file)))
         manifest = pd.read_csv(manifest_file, sep="\t")
         for _, row in manifest.iterrows():
             ids.append(row['id'])
-            feats_files.append(row['signs_file'])
+            sf = str(row['signs_file'])
+            if not os.path.isabs(sf):
+                sf = os.path.join(manifest_dir, sf)
+            feats_files.append(sf)
             offsets.append(int(row['signs_offset']))
             sizes.append(int(row['signs_length']))
         logger.info(f"loaded {len(ids)} samples")
