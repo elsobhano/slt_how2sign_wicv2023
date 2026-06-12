@@ -1,8 +1,8 @@
 #!/bin/sh
 
 #SBATCH --job-name="slt256"
-#SBATCH --partition=cogvis-project
-#SBATCH --nodelist=aisurrey27,aisurrey28,aisurrey29
+#SBATCH --partition=cogvis-project,3090
+#SBATCH --exclude=aisurrey36
 #SBATCH --gpus=1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -17,7 +17,13 @@ IMAGE=docker://container-registry.surrey.ac.uk/shared-containers/slt-how-2-sign
 # kept ABSOLUTE on purpose: Hydra chdir's into its output dir mid-run, so the
 # paths passed to fairseq below must be absolute or training breaks.
 REPO="$PWD"                                      # the fairseq fork repo (= current dir)
-DATA=$REPO/data/how2sign                         # where agcn_features* + vocab live
+
+# DATA auto-detects local vs cluster (mirrors configs/datasets.py SCRATCH logic):
+# where agcn_features* + vocab live (and where checkpoints get written).
+if   [ -d /projects/u6ei ];      then DATA=/projects/u6ei/sa04359/how2sign_wicv                 # Isambard
+elif [ -d /mnt/fast/nobackup ];  then DATA=/mnt/fast/nobackup/scratch4weeks/sa04359/how2sign_wicv # Surrey cluster
+else                                  DATA=$REPO/data/how2sign                                   # local
+fi
 
 # --- experiment (swap these to run a different variant) ---------------------
 CONFIG=agcn_signrep_6_3.yaml                      # 256-d backbone, warm-restart cosine
