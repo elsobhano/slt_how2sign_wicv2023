@@ -2,7 +2,7 @@
 
 #SBATCH --job-name="w12s12_1"
 #SBATCH --partition=cogvis-project,3090
-#SBATCH --exclude=aisurrey36
+#SBATCH --exclude=aisurrey36,aisurrey27
 #SBATCH --gpus=1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
