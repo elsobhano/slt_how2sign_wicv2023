@@ -348,10 +348,11 @@ class SignToTextTask(FairseqTask):
                     else:
                         s.add_string(ref, pred)
 
-                if self.cfg.eval_print_samples:
+                if self.cfg.eval_print_samples and getattr(self, "_n_printed", 0) < 5:
                     logger.info("Validation example:")
                     logger.info("H-{} {}".format(sample["id"][i], pred))
                     logger.info("T-{} {}".format(sample["id"][i], ref))
+                    self._n_printed = getattr(self, "_n_printed", 0) + 1
         for s in self.scorers:
             if s.cfg._name == 'wer':
                 logging_output["_wer_distance"] = s.distance
@@ -390,6 +391,9 @@ class SignToTextTask(FairseqTask):
 
     def reduce_metrics(self, logging_outputs, criterion):
         super().reduce_metrics(logging_outputs, criterion)
+        # Reset the per-validation sample-print counter (we print only the first
+        # few examples each validation instead of the whole subset).
+        self._n_printed = 0
 
         def sum_logs(key):
             import torch
@@ -505,6 +509,11 @@ class SignToTextTask(FairseqTask):
                         aux_ref_len = meters["_reduced_bleu_ref_len"].sum
                         return round(bleu.score, 2)
                     metrics.log_derived("reduced_sacrebleu", compute_reduced_bleu)
+                else:
+                    # Degenerate predictions (e.g. all-blacklisted "the the the ..."
+                    # at early steps) leave no n-grams after filtering -> totals all 0.
+                    # Log 0 so best_checkpoint_metric=reduced_sacrebleu doesn't KeyError.
+                    metrics.log_scalar("reduced_sacrebleu", 0.0)
             elif s.cfg._name == 'reducedchrf':
                 metrics.log_scalar("reducedchrf", sum_logs("reducedchrf"))
                 def compute_chrf(meters):

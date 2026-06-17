@@ -40,5 +40,6 @@ apptainer exec "$IMAGE" bash -lc "
     python -m fairseq_cli.hydra_train \
         --config-dir '$CONFIG_DIR' --config-name '$CONFIG' \
         optimization.lr=[$LR] optimization.max_update=$MAX_UPDATE \
-        model.dropout=$DP model.attention_dropout=$DP model.activation_dropout=$DP
+        model.dropout=$DP model.attention_dropout=$DP model.activation_dropout=$DP \
+        task.min_source_positions=1
 "
