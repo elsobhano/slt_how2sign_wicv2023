@@ -41,5 +41,5 @@ apptainer exec "$IMAGE" bash -lc "
         --config-dir '$CONFIG_DIR' --config-name '$CONFIG' \
         optimization.lr=[$LR] optimization.max_update=$MAX_UPDATE \
         model.dropout=$DP model.attention_dropout=$DP model.activation_dropout=$DP \
-        task.min_source_positions=1
+        +task.min_source_positions=1
 "

@@ -34,5 +34,5 @@ apptainer exec "$IMAGE" bash -lc "
     WANDB_PROJECT='$WANDB_PROJECT' WANDB_NAME='$WANDB_NAME' \
     python -m fairseq_cli.hydra_train \
         --config-dir '$CONFIG_DIR' --config-name '$CONFIG' \
-        task.min_source_positions=1
+        +task.min_source_positions=1
 "
