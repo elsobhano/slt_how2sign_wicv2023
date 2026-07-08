@@ -148,6 +148,7 @@ class SignToTextTask(FairseqTask):
             )
         )
         self.scorers = []
+        self.moses_detok = None
         if self.cfg.eval_wer:
             self.scorers.append(
                 build_scorer(cfg.eval_wer_config, self.tgt_dict)
@@ -336,8 +337,8 @@ class SignToTextTask(FairseqTask):
                 pred = decode(pred_tok)
                 for s in self.scorers:
                     if s.cfg._name == 'reducedBLEU' or s.cfg._name == 'reducedchrf':
-                        no_blacklisted_pred = [word for word in pred.translate(str.maketrans('', '', '!"#$%&\()*+,-./:;<=>?@[\\]^_`{|}~')).split(' ') if word not in blacklisted_words]
-                        no_blacklisted_ref = [word for word in ref.translate(str.maketrans('', '', '!"#$%&\()*+,-./:;<=>?@[\\]^_`{|}~')).split(' ') if word not in blacklisted_words]
+                        no_blacklisted_pred = [word for word in pred.translate(str.maketrans('', '', '!"#$%&\()*+,-./:;<=>?@[\\]^_`{|}~')).split(' ') if word.lower() not in blacklisted_words]
+                        no_blacklisted_ref = [word for word in ref.translate(str.maketrans('', '', '!"#$%&\()*+,-./:;<=>?@[\\]^_`{|}~')).split(' ') if word.lower() not in blacklisted_words]
                         
                         if len(no_blacklisted_pred) == 0:#If the list is empty, we add a space to avoid errors
                             no_blacklisted_pred.append(' ')
