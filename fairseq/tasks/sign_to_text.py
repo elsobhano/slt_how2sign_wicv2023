@@ -512,8 +512,10 @@ class SignToTextTask(FairseqTask):
                 else:
                     # Degenerate predictions (e.g. all-blacklisted "the the the ..."
                     # at early steps) leave no n-grams after filtering -> totals all 0.
-                    # Log 0 so best_checkpoint_metric=reduced_sacrebleu doesn't KeyError.
-                    metrics.log_scalar("reduced_sacrebleu", 0.0)
+                    # Must use log_derived (not log_scalar) so the meter type stays
+                    # consistent with the non-degenerate branch above; mixing the two
+                    # causes AttributeError because _DerivedMeter has no .update().
+                    metrics.log_derived("reduced_sacrebleu", lambda meters: 0.0)
             elif s.cfg._name == 'reducedchrf':
                 metrics.log_scalar("reducedchrf", sum_logs("reducedchrf"))
                 def compute_chrf(meters):
