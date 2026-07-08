@@ -11,7 +11,7 @@
 #SBATCH --time=0-03:00:00
 #SBATCH -o slurm_logs/slurm.%N.%j.out
 
-source "$(dirname "$(realpath "$0")")/notify.sh"
+source /mnt/fast/nobackup/users/sa04359/slt_how2sign_wicv2023/notify.sh
 
 # --- swept hyperparameters for this run ---
 ENC_LAYERS=6
