@@ -11,6 +11,8 @@
 #SBATCH --time=0-03:00:00
 #SBATCH -o slurm_logs/slurm.%N.%j.out
 
+source notify.sh
+
 # --- swept hyperparameters for this run ---
 ENC_LAYERS=4
 DEC_LAYERS=2
@@ -35,6 +37,17 @@ CONFIG_DIR=examples/sign_language/config/wicv_cvpr23/i3d_best
 export WANDB_API_KEY=1af8cc2a4ed95f2ba66c31d193caf3dd61c3a41f
 mkdir -p slurm_logs outputs
 
+OUTPUT_FILE="outputs/${WANDB_NAME}.out"
+echo "========================================" > "$OUTPUT_FILE"
+echo "SLURM Job ID: $SLURM_JOB_ID"           >> "$OUTPUT_FILE"
+echo "Job Name: $SLURM_JOB_NAME"             >> "$OUTPUT_FILE"
+echo "Node: $SLURM_NODELIST"                 >> "$OUTPUT_FILE"
+echo "Start Time: $(date)"                   >> "$OUTPUT_FILE"
+echo "========================================" >> "$OUTPUT_FILE"
+
+notify_start
+trap notify_timeout SIGTERM SIGINT
+
 apptainer exec "$IMAGE" bash -lc "
     python setup.py build_ext --inplace || exit 1
     PYTHONPATH='$REPO' SAVE_DIR='$DATA' I3D_DIR='$DATA/$FEATURES' \
@@ -44,4 +57,17 @@ apptainer exec "$IMAGE" bash -lc "
         optimization.lr=[$LR] optimization.max_update=$MAX_UPDATE \
         model.dropout=$DP model.attention_dropout=$DP model.activation_dropout=$DP \
         model.encoder_layers=$ENC_LAYERS model.decoder_layers=$DEC_LAYERS
-"
+" >> "$OUTPUT_FILE" 2>&1
+EXIT_CODE=$?
+
+echo "========================================" >> "$OUTPUT_FILE"
+echo "End Time: $(date)"                       >> "$OUTPUT_FILE"
+echo "========================================" >> "$OUTPUT_FILE"
+
+if [ $EXIT_CODE -eq 0 ]; then
+    notify_success
+else
+    notify_failure "$OUTPUT_FILE" $EXIT_CODE
+fi
+
+exit $EXIT_CODE
