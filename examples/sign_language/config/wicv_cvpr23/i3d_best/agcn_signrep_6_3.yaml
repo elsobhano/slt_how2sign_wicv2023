@@ -26,7 +26,7 @@ checkpoint:
 dataset:
   train_subset: train           # -> train.tsv ; metrics log under train/
   valid_subset: test            # -> test.tsv  ; validate on test (no separate val set); metrics log under test/
-  num_workers: 4
+  num_workers: 10
   batch_size: 32
   max_tokens: 16_000                          # 640s @ 25fps
   skip_invalid_size_inputs_valid_test: True
@@ -40,6 +40,7 @@ task:
   feats_type: "i3d"
   eval_gen_config:
     beam: 5
+    no_repeat_ngram_size: 4
   eval_bleu: True
   #eval_bleu_args: '{"beam": 5, "max_len_a": 0, "max_len_b": 30, "lenpen": 1.0}'
   pre_tokenizer: moses #Should we also do a truecaser? Check this when you can
