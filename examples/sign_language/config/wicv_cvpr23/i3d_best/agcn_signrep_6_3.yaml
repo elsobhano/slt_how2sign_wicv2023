@@ -51,7 +51,7 @@ task:
   eval_chrf: True
   eval_reducedBLEU: True
   eval_reducedchrf: True
-  eval_print_samples: True
+  eval_print_samples: False
 
 model:
   _name: sign2text_transformer

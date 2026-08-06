@@ -49,6 +49,7 @@ class SignFeatsDataset(FairseqDataset):
         min_sample_size: int = 0,
         max_sample_size: Optional[int] = None,
         shuffle: bool = True,
+        preload: Optional[bool] = None,
     ):
         super().__init__()
         assert len(ids) == len(feats_files) == len(offsets) == len(sizes)
@@ -58,7 +59,7 @@ class SignFeatsDataset(FairseqDataset):
         self.offsets = offsets
         self.sizes = sizes
         self.feats_type = feats_type
-        self.normalization = normalization 
+        self.normalization = normalization
         self.data_augmentation = data_augmentation
         self.min_sample_size = min_sample_size
         self.max_sample_size = (
@@ -66,6 +67,36 @@ class SignFeatsDataset(FairseqDataset):
         )
         self.shuffle = shuffle
         self.skipped_ids = []
+
+        # --- RAM preloading -------------------------------------------------
+        # Read every feature file into memory ONCE here (in the main process,
+        # before the DataLoader forks its workers). Downstream reads then hit
+        # RAM instead of the shared filesystem, which removes the per-sample
+        # small-file random I/O that makes many concurrent jobs contend on
+        # scratch. Workers inherit this cache via copy-on-write fork; the large
+        # numpy buffers are read-only, so they stay shared (no N_workers x RAM
+        # blow-up). Cache is keyed by file PATH so it survives filter_by_length
+        # (which pops entries by index). Enable with SIGN_FEATS_PRELOAD=1.
+        if preload is None:
+            preload = os.environ.get("SIGN_FEATS_PRELOAD", "0") == "1"
+        self.preload = preload
+        self._cache = None
+        if self.preload:
+            if self.feats_type in (SignFeatsType.i3d, SignFeatsType.openpose):
+                self._cache = {}
+                n = len(self.feats_files)
+                logger.info(f"[preload] loading {n} feature files into RAM ...")
+                for i, fp in enumerate(self.feats_files):
+                    if fp not in self._cache:
+                        with open(fp, "rb") as f:
+                            self._cache[fp] = np.load(f)
+                    if (i + 1) % 5000 == 0:
+                        logger.info(f"[preload] {i + 1}/{n}")
+                logger.info(f"[preload] done: {len(self._cache)} arrays cached in RAM")
+            else:
+                logger.warning(
+                    f"[preload] not supported for feats_type={self.feats_type}; "
+                    "reading from disk as usual")
 
     def filter_by_length(self, min_sample_size, max_sample_size):
         for _id, size in zip(self.ids[:], self.sizes[:]):
@@ -121,8 +152,11 @@ class SignFeatsDataset(FairseqDataset):
             pose.body = pose.body.select_frames(frames_list)
             pose = self.postprocess(pose)
         elif self.feats_type == SignFeatsType.i3d or self.feats_type == SignFeatsType.openpose:
-            with open(feats_file, "rb") as f:
-                pose = np.load(f)
+            if self._cache is not None and feats_file in self._cache:
+                pose = self._cache[feats_file]        # from RAM, no disk read
+            else:
+                with open(feats_file, "rb") as f:
+                    pose = np.load(f)
             pose = self.postprocess(pose)
 
         return {"id": index, "vid_id": _id, "source": pose}
