@@ -40,6 +40,14 @@ class CosineLRScheduleConfig(FairseqDataclass):
     lr_shrink: float = field(
         default=0.1, metadata={"help": "shrink factor for annealing"}
     )
+    lr_shrink_constant: bool = field(
+        default=False,
+        metadata={
+            "help": "if True, every restart cycle (i>=1) uses a CONSTANT lr_shrink "
+            "factor (peak = lr_shrink * base peak) instead of the default "
+            "compounding lr_shrink**i. Cycle 0 keeps the full base peak."
+        },
+    )
     # This is not required, but is for convenience in inferring lr_period_updates
     max_update: int = II("optimization.max_update")
 
@@ -102,6 +110,7 @@ class CosineLRSchedule(FairseqLRScheduler):
 
         self.warmup_updates = cfg.warmup_updates
         self.lr_shrink = cfg.lr_shrink
+        self.lr_shrink_constant = getattr(cfg, "lr_shrink_constant", False)
 
         # initial learning rate
         self.lr = cfg.warmup_init_lr
@@ -135,7 +144,12 @@ class CosineLRSchedule(FairseqLRScheduler):
                 t_i = self.period
                 t_curr = curr_updates - (self.period * i)
 
-            lr_shrink = self.lr_shrink**i
+            if self.lr_shrink_constant:
+                # constant shrink on every restart: cycle 0 = full peak,
+                # cycles i>=1 = lr_shrink * peak (no further decay per cycle)
+                lr_shrink = 1.0 if i == 0 else self.lr_shrink
+            else:
+                lr_shrink = self.lr_shrink**i
             min_lr = self.cfg.min_lr * lr_shrink
             max_lr = self.max_lr * lr_shrink
 
