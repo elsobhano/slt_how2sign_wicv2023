@@ -60,7 +60,7 @@ apptainer exec "$IMAGE" bash -lc "
         --config-dir '$CONFIG_DIR' --config-name '$CONFIG' \
         optimization.lr=[$LR] optimization.max_update=$MAX_UPDATE \
         model.dropout=$DP model.attention_dropout=$DP model.activation_dropout=$DP \
-        model.encoder_layers=$ENC_LAYERS model.decoder_layers=$DEC_LAYERS lr_scheduler.lr_shrink=0.5 lr_scheduler.lr_shrink_constant=true
+        model.encoder_layers=$ENC_LAYERS model.decoder_layers=$DEC_LAYERS lr_scheduler.lr_shrink=0.5 +lr_scheduler.lr_shrink_constant=true
 " >> "$OUTPUT_FILE" 2>&1
 EXIT_CODE=$?
 
