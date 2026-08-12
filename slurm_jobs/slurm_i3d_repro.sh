@@ -8,18 +8,20 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=12
 #SBATCH --mem=64G
-#SBATCH --time=0-05:00:00
+#SBATCH --time=0-10:00:00
 #SBATCH -o slurm_logs/slurm.%N.%j.out
 
 source /mnt/fast/nobackup/users/sa04359/slt_how2sign_wicv2023/notify.sh
 
 # Sanity check: reproduce the Tarrés et al. I3D How2Sign result (target ~BLEU 9.2).
-# Runs the paper's FINAL I3D config as-is (no hyperparameter overrides).
+# Runs the paper's FINAL I3D model (i3d_repro_test.yaml = baseline_6_3_dp03_wd_2
+# with ONLY the logging changed to match the agcn runs: validate on TEST every
+# epoch under the "test" wandb tab, eval_print_samples off; no hyperparam changes).
 # Requires the downloaded I3D features at $DATA/i3d_features (CSUC dataverse,
 # doi:10.34810/data693) with the cvpr23.fairseq.i3d.{train,val,test}.how2sign.tsv
 # manifests + per-split .npy. Vocab already lives under $DATA/vocab.
 
-CONFIG=baseline_6_3_dp03_wd_2.yaml     # the paper's final I3D model
+CONFIG=i3d_repro_test.yaml             # paper's final I3D model, logging like the agcn runs
 FEATURES=i3d_features
 WANDB_PROJECT=how2sign-slt-agcn        # same board as your agcn runs, for comparison
 WANDB_NAME=i3d_repro_6_3_dp03_wd2
@@ -34,6 +36,12 @@ fi
 CONFIG_DIR=examples/sign_language/config/wicv_cvpr23/i3d_best
 export WANDB_API_KEY=1af8cc2a4ed95f2ba66c31d193caf3dd61c3a41f
 mkdir -p slurm_logs outputs
+
+# Alias the I3D manifests to plain train.tsv / test.tsv so the fairseq subset
+# names (and therefore the wandb tabs) are "train" / "test" — matching the agcn
+# runs — instead of "cvpr23.fairseq.i3d.*.how2sign". Validate on TEST, not val.
+ln -sf cvpr23.fairseq.i3d.train.how2sign.tsv "$DATA/$FEATURES/train.tsv"
+ln -sf cvpr23.fairseq.i3d.test.how2sign.tsv  "$DATA/$FEATURES/test.tsv"
 
 OUTPUT_FILE="outputs/${WANDB_NAME}.out"
 echo "========================================" > "$OUTPUT_FILE"
