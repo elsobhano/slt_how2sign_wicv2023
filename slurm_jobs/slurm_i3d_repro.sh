@@ -2,7 +2,7 @@
 
 #SBATCH --job-name="i3d_repro"
 #SBATCH --partition=cogvis-project,3090
-#SBATCH --exclude=aisurrey36
+#SBATCH --exclude=aisurrey36,aisurrey27
 #SBATCH --gpus=1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
