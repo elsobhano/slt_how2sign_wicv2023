@@ -1,6 +1,6 @@
 #!/bin/sh
 
-#SBATCH --job-name="mc_s1_i3dcfg"
+#SBATCH --job-name="mc_pf_i3dcfg"
 #SBATCH --partition=cogvis-project,3090
 #SBATCH --exclude=aisurrey36,aisurrey27
 #SBATCH --gpus=1
@@ -14,15 +14,15 @@
 source /mnt/fast/nobackup/users/sa04359/slt_how2sign_wicv2023/notify.sh
 
 # Train the Tarrés translator on our full-train mean-conformer features
-# (agcn_meanconf_w16_s1_new, window16/stride2, 256-d, NO val carve) using the
+# (agcn_meanconf_perframe_new, window16/stride2, 256-d, NO val carve) using the
 # EXACT I3D hyperparameters + logging. Only change vs the I3D config is
 # model.feat_dim=256 (our features are 256-d; I3D's default is 1024).
 # Validates on TEST every epoch under the "test" wandb tab, print samples off.
 
 CONFIG=agcn_meanconf_new_i3dcfg.yaml
-FEATURES=agcn_meanconf_w16_s1_new
+FEATURES=agcn_meanconf_perframe_new
 WANDB_PROJECT=how2sign-slt-agcn
-WANDB_NAME=agcn_meanconf_w16s1_new_i3dcfg
+WANDB_NAME=agcn_meanconf_perframe_new_i3dcfg
 
 # --- paths (auto-detect local vs cluster) ---
 IMAGE=docker://container-registry.surrey.ac.uk/shared-containers/slt-how-2-sign
@@ -40,24 +40,22 @@ echo "========================================" > "$OUTPUT_FILE"
 echo "SLURM Job ID: $SLURM_JOB_ID"           >> "$OUTPUT_FILE"
 echo "Job Name: $SLURM_JOB_NAME"             >> "$OUTPUT_FILE"
 echo "Node: $SLURM_NODELIST"                 >> "$OUTPUT_FILE"
-echo "Config: $CONFIG  Features: $FEATURES (mean-conformer w16 s1, 256-d, I3D cfg)" >> "$OUTPUT_FILE"
+echo "Config: $CONFIG  Features: $FEATURES (mean-conformer per-frame, 256-d, I3D cfg)" >> "$OUTPUT_FILE"
 echo "Start Time: $(date)"                   >> "$OUTPUT_FILE"
 echo "========================================" >> "$OUTPUT_FILE"
 
 notify_start
 trap notify_timeout SIGTERM SIGINT
 
-# Override min_source_positions: default is 25 (in I3D units L=frames), but our
-# stride-1 windows give L=frames-15, so min=25 would drop ~2x more short clips
-# than I3D. min=10 (=25-15) matches I3D's real ">=25 frames" cutoff -> same
-# sentence set and ~919 steps/epoch. (feat_dim=256 already in the config.)
+# per-frame extraction gives L == num_frames, i.e. the SAME length units as I3D,
+# so the default min_source_positions=25 already matches I3D's >=25-frame cutoff.
+# No override needed. (feat_dim=256 is already in the config.)
 apptainer exec "$IMAGE" bash -lc "
     python setup.py build_ext --inplace || exit 1
     SIGN_FEATS_PRELOAD=1 PYTHONPATH='$REPO' SAVE_DIR='$DATA' I3D_DIR='$DATA/$FEATURES' \
     WANDB_PROJECT='$WANDB_PROJECT' WANDB_NAME='$WANDB_NAME' \
     python -m fairseq_cli.hydra_train \
-        --config-dir '$CONFIG_DIR' --config-name '$CONFIG' \
-        task.min_source_positions=10
+        --config-dir '$CONFIG_DIR' --config-name '$CONFIG'
 " >> "$OUTPUT_FILE" 2>&1
 EXIT_CODE=$?
 
