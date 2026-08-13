@@ -22,7 +22,7 @@ source /mnt/fast/nobackup/users/sa04359/slt_how2sign_wicv2023/notify.sh
 CONFIG=agcn_meanconf_new_i3dcfg.yaml
 FEATURES=agcn_meanconf_w16_s1_new
 WANDB_PROJECT=how2sign-slt-agcn
-WANDB_NAME=agcn_meanconf_w16s1_new_i3dcfg
+WANDB_NAME=agcn_meanconf_w16s1_new_i3dcfg_v2
 
 # --- paths (auto-detect local vs cluster) ---
 IMAGE=docker://container-registry.surrey.ac.uk/shared-containers/slt-how-2-sign
